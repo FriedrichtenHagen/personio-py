@@ -38,6 +38,7 @@ class Personio:
     ATTENDANCE_URL = 'company/attendances'
     ABSENCE_URL = 'company/time-offs'
     PROJECT_URL = 'company/attendances/projects'
+    EMPLOYEES_URL = 'company/employees'
 
     def __init__(self, base_url: str = None, client_id: str = None, client_secret: str = None,
                  dynamic_fields: List[DynamicMapping] = None,
@@ -170,6 +171,9 @@ class Personio:
         elif self.ATTENDANCE_URL == path:
             offset = 0
             url_type = 'attendance'
+        elif self.EMPLOYEES_URL == path:
+            offset = 0
+            url_type = 'employees'
         else:
             raise ValueError(f"Invalid path: {path}")
 
@@ -194,6 +198,12 @@ class Personio:
                     else:
                         data_acc.extend(resp_data)
                         params['offset'] += limit
+                elif url_type == 'employees':
+                    data_acc.extend(resp_data)
+                    if response['metadata']['current_page'] + 1 == response['metadata']['total_pages']:
+                        break
+                    else:
+                        params['offset'] += 1
             else:
                 break
         # return the accumulated data
@@ -230,11 +240,11 @@ class Personio:
     def get_employees(self) -> List[Employee]:
         """
         Get a list of all employee records in your account.
-        Does not involve pagination.
+        Requires pagination. Max page size is 100.
 
         :return: list of ``Employee`` instances
         """
-        response = self.request_json('company/employees')
+        response = self.request_paginated(path='company/employees', limit=100)
         employees = [Employee.from_dict(d, self) for d in response['data']]
         return employees
 
